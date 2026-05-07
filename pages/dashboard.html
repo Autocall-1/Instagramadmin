@@ -1,1 +1,601 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin Dashboard — LeadMachine</title>
+  <link rel="stylesheet" href="../assets/admin.css">
+  <style>
+    /* User rows */
+    .user-tr{grid-template-columns:34px 1.8fr 1fr 100px 90px 110px 90px 100px}
+    /* Revenue chart */
+    .rev-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;margin-bottom:20px}
+    .rev-card{background:var(--bg3);border:1px solid var(--edge);border-radius:var(--r2);padding:18px}
+    .rev-big{font-family:'Bebas Neue',sans-serif;font-size:36px;line-height:1;letter-spacing:-1px}
+    .rev-lbl{font-family:'DM Mono',monospace;font-size:9px;letter-spacing:2px;text-transform:uppercase;color:var(--w3);margin-bottom:8px}
+    /* Lead viewer */
+    .lead-tr{grid-template-columns:28px 1.5fr 1fr 1fr 90px 90px}
+    /* User detail modal fields */
+    .detail-row{display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid var(--edge);font-size:13px}
+    .detail-row:last-child{border:none}
+    .detail-key{color:var(--w3);font-family:'DM Mono',monospace;font-size:11px}
+    .detail-val{color:var(--w);font-weight:500}
+    /* Plan badge special */
+    .plan-trial{background:rgba(251,191,36,.08);color:var(--gold);border:1px solid rgba(251,191,36,.2);font-size:10px;font-weight:700;padding:3px 8px;border-radius:4px;letter-spacing:.8px;text-transform:uppercase}
+    .plan-paid{background:rgba(34,211,160,.08);color:var(--green);border:1px solid rgba(34,211,160,.2);font-size:10px;font-weight:700;padding:3px 8px;border-radius:4px;letter-spacing:.8px;text-transform:uppercase}
+    .plan-expired{background:rgba(248,113,113,.08);color:var(--red);border:1px solid rgba(248,113,113,.2);font-size:10px;font-weight:700;padding:3px 8px;border-radius:4px;letter-spacing:.8px;text-transform:uppercase}
+  </style>
+</head>
+<body>
+<div class="noise"></div>
+<div class="admin-app z1">
 
+  <!-- Sidebar -->
+  <aside class="sidebar">
+    <div class="sb-logo">
+      <div class="sb-logo-icon">👑</div>
+      <div class="sb-logo-text">LEAD<span>MACHINE</span></div>
+    </div>
+
+    <div class="sb-section">
+      <span class="sb-label">Overview</span>
+      <button class="sb-item active" data-page="overview"><span class="sb-icon">📊</span>Dashboard</button>
+      <button class="sb-item" data-page="revenue"><span class="sb-icon">💰</span>Revenue<span class="sb-badge" id="sb-rev">₹0</span></button>
+    </div>
+    <div class="sb-section">
+      <span class="sb-label">Management</span>
+      <button class="sb-item" data-page="users"><span class="sb-icon">👥</span>Users<span class="sb-badge" id="sb-users">0</span></button>
+      <button class="sb-item" data-page="leads"><span class="sb-icon">📥</span>All Leads<span class="sb-badge" id="sb-leads">0</span></button>
+      <button class="sb-item" data-page="bots"><span class="sb-icon">🤖</span>Bot Status</button>
+    </div>
+    <div class="sb-section">
+      <span class="sb-label">System</span>
+      <button class="sb-item" data-page="settings"><span class="sb-icon">⚙️</span>Settings</button>
+    </div>
+
+    <div class="sb-bottom">
+      <button class="sb-item" id="btn-logout"><span class="sb-icon">🚪</span>Logout</button>
+    </div>
+  </aside>
+
+  <!-- Main -->
+  <div class="main-area">
+    <div class="topbar">
+      <div class="topbar-left">
+        <span class="dot-on"></span>
+        <span class="topbar-title" id="pg-title">DASHBOARD</span>
+      </div>
+      <div class="topbar-right">
+        <span style="font-family:'DM Mono',monospace;font-size:11px;color:var(--w3)" id="admin-name">Admin</span>
+        <span id="time-display" style="font-family:'DM Mono',monospace;font-size:11px;color:var(--w3)"></span>
+      </div>
+    </div>
+
+    <div class="content">
+
+      <!-- ── OVERVIEW ── -->
+      <div class="pg show" id="pg-overview">
+        <div class="ph">
+          <div><div class="ph-title">OVERVIEW</div><div class="ph-sub" id="overview-date">Loading...</div></div>
+          <button class="btn btn-outline btn-sm" onclick="loadAll()">↻ Refresh</button>
+        </div>
+        <div class="stats-row">
+          <div class="sc"><div class="sc-label">Total Users</div><div class="sc-val purple" id="st-users">0</div><div class="sc-sub">All accounts</div></div>
+          <div class="sc"><div class="sc-label">Active Paid</div><div class="sc-val green" id="st-paid">0</div><div class="sc-sub">₹499/month</div></div>
+          <div class="sc"><div class="sc-label">Trial Active</div><div class="sc-val gold" id="st-trial">0</div><div class="sc-sub">7-day trial</div></div>
+          <div class="sc"><div class="sc-label">MRR</div><div class="sc-val" id="st-mrr">₹0</div><div class="sc-sub">Monthly recurring</div></div>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+          <div class="panel">
+            <div class="panel-hdr"><div class="panel-title">Recent Signups</div></div>
+            <div id="recent-signups"></div>
+          </div>
+          <div class="panel">
+            <div class="panel-hdr"><div class="panel-title">Recent Payments</div></div>
+            <div id="recent-payments"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── REVENUE ── -->
+      <div class="pg" id="pg-revenue">
+        <div class="ph"><div class="ph-title">REVENUE</div><div class="ph-sub">Razorpay payments & subscriptions</div></div>
+        <div class="rev-grid">
+          <div class="rev-card"><div class="rev-lbl">Total Revenue</div><div class="rev-big" id="rev-total" style="color:var(--green)">₹0</div></div>
+          <div class="rev-card"><div class="rev-lbl">MRR</div><div class="rev-big" id="rev-mrr" style="color:var(--accent)">₹0</div></div>
+          <div class="rev-card"><div class="rev-lbl">Active Subs</div><div class="rev-big" id="rev-subs" style="color:var(--gold)">0</div></div>
+        </div>
+        <div class="panel">
+          <div class="panel-hdr">
+            <div class="panel-title">Payment History</div>
+            <button class="btn btn-outline btn-sm" id="btn-export-payments">↓ Export CSV</button>
+          </div>
+          <div class="tbl">
+            <div class="tr thead" style="grid-template-columns:1.5fr 1fr 100px 100px 120px">
+              <div class="th">User</div><div class="th">Plan</div><div class="th">Amount</div><div class="th">Status</div><div class="th">Date</div>
+            </div>
+            <div id="payments-body"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── USERS ── -->
+      <div class="pg" id="pg-users">
+        <div class="ph">
+          <div><div class="ph-title">ALL USERS</div><div class="ph-sub" id="user-count-label">Loading...</div></div>
+          <div style="display:flex;gap:10px">
+            <input class="search-bar" id="user-search" type="text" placeholder="🔍 Search users...">
+            <button class="btn btn-outline btn-sm" id="btn-export-users">↓ CSV</button>
+          </div>
+        </div>
+        <div class="panel">
+          <div class="tbl">
+            <div class="tr thead user-tr">
+              <div class="th"></div>
+              <div class="th">User</div>
+              <div class="th">Business</div>
+              <div class="th">Plan</div>
+              <div class="th">Leads</div>
+              <div class="th">Bot</div>
+              <div class="th">IG</div>
+              <div class="th">Actions</div>
+            </div>
+            <div id="users-body"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── ALL LEADS ── -->
+      <div class="pg" id="pg-leads">
+        <div class="ph">
+          <div><div class="ph-title">ALL LEADS</div><div class="ph-sub">Every lead across all users</div></div>
+          <div style="display:flex;gap:10px">
+            <input class="search-bar" id="lead-search" type="text" placeholder="🔍 Search leads...">
+            <button class="btn btn-outline btn-sm" id="btn-export-leads">↓ CSV</button>
+          </div>
+        </div>
+        <div class="panel">
+          <div class="tbl">
+            <div class="tr thead lead-tr">
+              <div class="th"></div>
+              <div class="th">Lead Name</div>
+              <div class="th">Owner</div>
+              <div class="th">Business</div>
+              <div class="th">Status</div>
+              <div class="th">Date</div>
+            </div>
+            <div id="all-leads-body"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── BOT STATUS ── -->
+      <div class="pg" id="pg-bots">
+        <div class="ph"><div class="ph-title">BOT STATUS</div><div class="ph-sub">Toggle bots per user</div></div>
+        <div class="panel">
+          <div class="tbl">
+            <div class="tr thead" style="grid-template-columns:34px 1.5fr 1fr 100px 100px 90px">
+              <div class="th"></div><div class="th">User</div><div class="th">Instagram</div><div class="th">Plan</div><div class="th">Bot</div><div class="th">Force</div>
+            </div>
+            <div id="bots-body"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── SETTINGS ── -->
+      <div class="pg" id="pg-settings">
+        <div class="ph"><div class="ph-title">SETTINGS</div></div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px">
+          <div class="panel">
+            <div class="panel-hdr"><div class="panel-title">Platform Config</div></div>
+            <div class="panel-body">
+              <div class="form-group"><label class="form-label">Trial Days</label><input class="form-input" id="cfg-trial" type="number" value="7" min="1" max="30"></div>
+              <div class="form-group"><label class="form-label">Pro Price (₹)</label><input class="form-input" id="cfg-price" type="number" value="499"></div>
+              <div class="form-group"><label class="form-label">Free Leads Limit</label><input class="form-input" id="cfg-leads" type="number" value="100"></div>
+              <button class="btn btn-primary" id="btn-save-cfg">Save Config</button>
+            </div>
+          </div>
+          <div class="panel">
+            <div class="panel-hdr"><div class="panel-title">Make User Admin</div></div>
+            <div class="panel-body">
+              <div class="form-group"><label class="form-label">User UID</label><input class="form-input" id="admin-uid" placeholder="Firebase UID"></div>
+              <button class="btn btn-primary" id="btn-make-admin">Grant Admin Access</button>
+              <div class="form-hint" style="margin-top:8px;font-size:11px;color:var(--w3)">Sets is_admin=true in Firestore for that user UID.</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div><!-- /content -->
+  </div><!-- /main-area -->
+</div><!-- /admin-app -->
+
+<!-- User Detail Modal -->
+<div class="modal-overlay" id="user-modal">
+  <div class="modal-box">
+    <div class="modal-title" id="modal-title">USER DETAIL</div>
+    <div id="modal-body"></div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closeModal()">Close</button>
+      <button class="btn btn-danger btn-sm" id="modal-ban-btn">🚫 Suspend</button>
+      <button class="btn btn-success btn-sm" id="modal-activate-btn">✅ Activate Pro</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast-area"></div>
+
+<script type="module">
+// ── Firebase imports ──────────────────────────────────────────────────────────
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+import { getAuth, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+import { getFirestore, collection, getDocs, doc, getDoc, updateDoc, query,
+         orderBy, serverTimestamp, Timestamp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+
+// PASTE SAME CONFIG AS admin/index.html
+const FIREBASE_CONFIG = {
+  apiKey:"YOUR_API_KEY", authDomain:"YOUR_PROJECT.firebaseapp.com",
+  projectId:"YOUR_PROJECT_ID", storageBucket:"YOUR_PROJECT.appspot.com",
+  messagingSenderId:"YOUR_SENDER_ID", appId:"YOUR_APP_ID"
+};
+const app  = initializeApp(FIREBASE_CONFIG);
+const auth = getAuth(app);
+const db   = getFirestore(app);
+
+let adminUser = null;
+let allUsers  = [];
+let allLeads  = [];
+let payments  = [];
+
+// ── Auth guard ────────────────────────────────────────────────────────────────
+const unsub = onAuthStateChanged(auth, async user => {
+  unsub();
+  if (!user) { location.href = '../index.html'; return; }
+  const snap = await getDoc(doc(db, 'users', user.uid));
+  if (!snap.exists() || !snap.data().is_admin) { await signOut(auth); location.href='../index.html'; return; }
+  adminUser = { ...snap.data(), uid: user.uid };
+  document.getElementById('admin-name').textContent = adminUser.name || 'Admin';
+  await loadAll();
+});
+
+// ── Sidebar nav ───────────────────────────────────────────────────────────────
+function nav(page) {
+  document.querySelectorAll('.pg').forEach(p => p.classList.remove('show'));
+  document.querySelectorAll('.sb-item[data-page]').forEach(b => b.classList.remove('active'));
+  document.getElementById('pg-' + page).classList.add('show');
+  document.querySelector(`[data-page="${page}"]`)?.classList.add('active');
+  document.getElementById('pg-title').textContent = page.toUpperCase();
+}
+document.querySelectorAll('.sb-item[data-page]').forEach(b => b.addEventListener('click', () => nav(b.dataset.page)));
+document.getElementById('btn-logout').addEventListener('click', async () => { await signOut(auth); location.href = '../index.html'; });
+
+// ── Time display ──────────────────────────────────────────────────────────────
+setInterval(() => {
+  document.getElementById('time-display').textContent = new Date().toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+}, 1000);
+document.getElementById('overview-date').textContent = new Date().toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+
+// ── Load all data ─────────────────────────────────────────────────────────────
+window.loadAll = async function() {
+  try {
+    // Load users
+    const uSnap = await getDocs(collection(db, 'users'));
+    allUsers = uSnap.docs.map(d => ({ uid: d.id, ...d.data() }));
+
+    // Load leads for all users
+    allLeads = [];
+    for (const u of allUsers) {
+      try {
+        const lSnap = await getDocs(query(collection(db, 'users', u.uid, 'leads'), orderBy('created_at', 'desc')));
+        const userLeads = lSnap.docs.map(d => ({ id: d.id, ownerUid: u.uid, ownerName: u.name || u.email, ...d.data() }));
+        u._leadCount = userLeads.length;
+        allLeads.push(...userLeads);
+      } catch { u._leadCount = 0; }
+    }
+
+    // Load payments from backend (fallback: read from Firestore payments collection)
+    try {
+      const pSnap = await getDocs(query(collection(db, 'payments'), orderBy('created_at', 'desc')));
+      payments = pSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+    } catch { payments = []; }
+
+    renderOverview();
+    renderUsers(allUsers);
+    renderLeads(allLeads);
+    renderBots(allUsers);
+    renderRevenue();
+
+    // Update sidebar badges
+    document.getElementById('sb-users').textContent = allUsers.length;
+    document.getElementById('sb-leads').textContent = allLeads.length;
+    const mrr = allUsers.filter(u => isActivePaid(u)).length * 499;
+    document.getElementById('sb-rev').textContent = '₹' + mrr.toLocaleString('en-IN');
+
+  } catch(err) { toast('Load error: ' + err.message, 'error'); }
+};
+
+// ── Plan helpers ──────────────────────────────────────────────────────────────
+function isActivePaid(u) {
+  const paidUntil = u.paid_until?.toDate?.() || null;
+  return paidUntil && paidUntil > new Date();
+}
+function isActiveTrial(u) {
+  if (isActivePaid(u)) return false;
+  const trialEnd = u.trial_ends_at?.toDate?.() || null;
+  return trialEnd && trialEnd > new Date();
+}
+function planStatus(u) {
+  if (isActivePaid(u)) return { label: 'PRO', cls: 'plan-paid' };
+  if (isActiveTrial(u)) return { label: 'TRIAL', cls: 'plan-trial' };
+  return { label: 'EXPIRED', cls: 'plan-expired' };
+}
+function daysLeft(u) {
+  const d = isActivePaid(u)
+    ? u.paid_until?.toDate?.()
+    : u.trial_ends_at?.toDate?.();
+  if (!d) return '—';
+  const diff = Math.ceil((d - new Date()) / 86400000);
+  return diff > 0 ? diff + 'd' : 'Expired';
+}
+function fmtDate(ts) {
+  if (!ts) return '—';
+  const d = ts.toDate ? ts.toDate() : new Date(ts);
+  return d.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
+}
+function timeAgo(ts) {
+  if (!ts) return '—';
+  const d = ts.toDate ? ts.toDate() : new Date(ts), diff = Date.now() - d.getTime();
+  if (diff < 60000) return 'just now';
+  if (diff < 3600000) return Math.floor(diff/60000)+'m ago';
+  if (diff < 86400000) return Math.floor(diff/3600000)+'h ago';
+  return fmtDate(ts);
+}
+function avatar(name, color = '#a855f7') {
+  const init = (name || '?')[0].toUpperCase();
+  return `<div class="av" style="background:${color}20;color:${color};border:1px solid ${color}40">${init}</div>`;
+}
+
+// ── OVERVIEW ─────────────────────────────────────────────────────────────────
+function renderOverview() {
+  const paid    = allUsers.filter(isActivePaid).length;
+  const trial   = allUsers.filter(isActiveTrial).length;
+  const mrr     = paid * 499;
+  document.getElementById('st-users').textContent = allUsers.length;
+  document.getElementById('st-paid').textContent  = paid;
+  document.getElementById('st-trial').textContent = trial;
+  document.getElementById('st-mrr').textContent   = '₹' + mrr.toLocaleString('en-IN');
+
+  // Recent signups (last 5)
+  const recent = [...allUsers].sort((a,b)=>(b.created_at?.seconds||0)-(a.created_at?.seconds||0)).slice(0,5);
+  document.getElementById('recent-signups').innerHTML = recent.length
+    ? recent.map(u=>`<div style="display:flex;align-items:center;gap:12px;padding:10px 20px;border-bottom:1px solid var(--edge)">
+        ${avatar(u.name,'#a855f7')}
+        <div><div style="font-size:13px;font-weight:600">${u.name||'—'}</div><div style="font-size:11px;color:var(--w3)">${u.email||''}</div></div>
+        <div style="margin-left:auto"><span class="${planStatus(u).cls}">${planStatus(u).label}</span></div>
+        <div style="font-family:'DM Mono',monospace;font-size:11px;color:var(--w3)">${timeAgo(u.created_at)}</div>
+      </div>`).join('')
+    : '<div class="empty"><div class="empty-t">No users yet</div></div>';
+
+  // Recent payments
+  document.getElementById('recent-payments').innerHTML = payments.slice(0,5).length
+    ? payments.slice(0,5).map(p=>`<div style="display:flex;align-items:center;gap:12px;padding:10px 20px;border-bottom:1px solid var(--edge)">
+        <div style="font-size:13px;font-weight:600;flex:1">${p.userName||p.userEmail||'—'}</div>
+        <div style="color:var(--green);font-weight:700;font-family:'Bebas Neue',sans-serif;font-size:18px">₹${p.amount||499}</div>
+        <div style="font-family:'DM Mono',monospace;font-size:11px;color:var(--w3)">${timeAgo(p.created_at)}</div>
+      </div>`).join('')
+    : '<div class="empty"><div class="empty-t">No payments yet</div></div>';
+}
+
+// ── USERS ─────────────────────────────────────────────────────────────────────
+function renderUsers(users) {
+  document.getElementById('user-count-label').textContent = users.length + ' users total';
+  const el = document.getElementById('users-body');
+  if (!users.length) { el.innerHTML='<div class="empty"><div class="empty-t">No users</div></div>'; return; }
+  el.innerHTML = users.map(u => {
+    const ps = planStatus(u);
+    const botOn = u.bot_active;
+    const igOn  = u.ig_connected;
+    return `<div class="tr user-tr">
+      ${avatar(u.name,'#a855f7')}
+      <div><div class="td-name">${u.name||'—'}</div><div class="td-sub">${u.email||''}</div></div>
+      <div class="mono">${u.business_name||'—'}</div>
+      <div><span class="${ps.cls}">${ps.label}</span><div style="font-size:10px;color:var(--w3);margin-top:2px">${daysLeft(u)} left</div></div>
+      <div class="mono">${u._leadCount||0}</div>
+      <div>
+        <div class="tog-wrap">
+          <button class="tog ${botOn?'on':''}" onclick="toggleBot('${u.uid}',${!botOn},this)"></button>
+          <span class="tog-label">${botOn?'ON':'OFF'}</span>
+        </div>
+      </div>
+      <div>${igOn?'<span class="badge badge-green">✓</span>':'<span class="badge badge-grey">—</span>'}</div>
+      <div style="display:flex;gap:6px">
+        <button class="btn btn-outline btn-sm" onclick="viewUser('${u.uid}')">View</button>
+        <button class="btn btn-danger btn-sm" onclick="grantPro('${u.uid}','${u.name||''}')">+Pro</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+document.getElementById('user-search').addEventListener('input', e => {
+  const q = e.target.value.toLowerCase();
+  renderUsers(allUsers.filter(u =>
+    (u.name||'').toLowerCase().includes(q) || (u.email||'').toLowerCase().includes(q) || (u.business_name||'').toLowerCase().includes(q)
+  ));
+});
+
+// ── LEADS ─────────────────────────────────────────────────────────────────────
+function renderLeads(leads) {
+  const el = document.getElementById('all-leads-body');
+  if (!leads.length) { el.innerHTML='<div class="empty"><div class="empty-t">No leads yet</div></div>'; return; }
+  el.innerHTML = leads.map(l => `<div class="tr lead-tr">
+    ${avatar(l.name,'#f97316')}
+    <div><div class="td-name">${l.name||'—'}</div><div class="td-sub">${l.ig_user_id||''}</div></div>
+    <div class="mono">${l.ownerName||'—'}</div>
+    <div class="mono">${l.business_type||l.product||'—'}</div>
+    <div>${l.status==='converted'?'<span class="badge badge-green">✅ YES</span>':'<span class="badge badge-grey">Active</span>'}</div>
+    <div class="mono">${timeAgo(l.created_at)}</div>
+  </div>`).join('');
+}
+
+document.getElementById('lead-search').addEventListener('input', e => {
+  const q = e.target.value.toLowerCase();
+  renderLeads(allLeads.filter(l =>
+    (l.name||'').toLowerCase().includes(q) || (l.ownerName||'').toLowerCase().includes(q) || (l.business_type||'').toLowerCase().includes(q)
+  ));
+});
+
+// ── BOT STATUS ────────────────────────────────────────────────────────────────
+function renderBots(users) {
+  const el = document.getElementById('bots-body');
+  el.innerHTML = users.map(u => `<div class="tr" style="grid-template-columns:34px 1.5fr 1fr 100px 100px 90px">
+    ${avatar(u.name,'#60a5fa')}
+    <div><div class="td-name">${u.name||'—'}</div><div class="td-sub">${u.email||''}</div></div>
+    <div class="mono">${u.ig_page_name||'Not connected'}</div>
+    <div><span class="${planStatus(u).cls}">${planStatus(u).label}</span></div>
+    <div>
+      <div class="tog-wrap">
+        <button class="tog ${u.bot_active?'on':''}" onclick="toggleBot('${u.uid}',${!u.bot_active},this)"></button>
+        <span class="tog-label">${u.bot_active?'ON':'OFF'}</span>
+      </div>
+    </div>
+    <div>
+      <button class="btn btn-sm ${u.bot_active?'btn-danger':'btn-success'}" onclick="forceBot('${u.uid}',${!u.bot_active})">
+        ${u.bot_active?'Stop':'Start'}
+      </button>
+    </div>
+  </div>`).join('');
+}
+
+// ── REVENUE ───────────────────────────────────────────────────────────────────
+function renderRevenue() {
+  const paid    = allUsers.filter(isActivePaid).length;
+  const total   = payments.reduce((s, p) => s + (p.amount || 499), 0);
+  const mrr     = paid * 499;
+  document.getElementById('rev-total').textContent = '₹' + total.toLocaleString('en-IN');
+  document.getElementById('rev-mrr').textContent   = '₹' + mrr.toLocaleString('en-IN');
+  document.getElementById('rev-subs').textContent  = paid;
+
+  const el = document.getElementById('payments-body');
+  if (!payments.length) {
+    el.innerHTML = '<div class="empty"><div class="empty-t">No payments yet</div></div>';
+    return;
+  }
+  el.innerHTML = payments.map(p => `<div class="tr" style="grid-template-columns:1.5fr 1fr 100px 100px 120px">
+    <div><div class="td-name">${p.userName||'—'}</div><div class="td-sub">${p.userEmail||''}</div></div>
+    <div class="mono">Pro Plan</div>
+    <div style="color:var(--green);font-weight:700">₹${p.amount||499}</div>
+    <div><span class="badge badge-green">Paid</span></div>
+    <div class="mono">${fmtDate(p.created_at)}</div>
+  </div>`).join('');
+}
+
+// ── Actions ───────────────────────────────────────────────────────────────────
+window.toggleBot = async function(uid, newVal, toggleEl) {
+  try {
+    await updateDoc(doc(db, 'users', uid), { bot_active: newVal, updated_at: serverTimestamp() });
+    const u = allUsers.find(u => u.uid === uid);
+    if (u) u.bot_active = newVal;
+    if (toggleEl) {
+      toggleEl.classList.toggle('on', newVal);
+      const label = toggleEl.nextElementSibling;
+      if (label) label.textContent = newVal ? 'ON' : 'OFF';
+    }
+    toast(newVal ? '🤖 Bot activated' : 'Bot deactivated', newVal ? 'success' : 'info');
+  } catch(err) { toast('Failed: ' + err.message, 'error'); }
+};
+
+window.forceBot = async function(uid, newVal) {
+  await toggleBot(uid, newVal);
+  renderBots(allUsers);
+};
+
+window.grantPro = async function(uid, name) {
+  if (!confirm(`Grant 30-day Pro to ${name}?`)) return;
+  const paidUntil = new Date(Date.now() + 30 * 86400000);
+  try {
+    await updateDoc(doc(db, 'users', uid), { plan: 'paid', paid_until: paidUntil, updated_at: serverTimestamp() });
+    const u = allUsers.find(u => u.uid === uid);
+    if (u) { u.plan = 'paid'; u.paid_until = { toDate: () => paidUntil }; }
+    renderUsers(allUsers);
+    toast('✅ Pro granted to ' + name, 'success');
+  } catch(err) { toast('Failed: ' + err.message, 'error'); }
+};
+
+// ── User Detail Modal ─────────────────────────────────────────────────────────
+let modalUid = null;
+window.viewUser = function(uid) {
+  const u = allUsers.find(u => u.uid === uid);
+  if (!u) return;
+  modalUid = uid;
+  const ps = planStatus(u);
+  document.getElementById('modal-title').textContent = (u.name || 'User').toUpperCase();
+  document.getElementById('modal-body').innerHTML = `
+    <div class="detail-row"><span class="detail-key">UID</span><span class="detail-val" style="font-family:'DM Mono',monospace;font-size:11px">${uid}</span></div>
+    <div class="detail-row"><span class="detail-key">Email</span><span class="detail-val">${u.email||'—'}</span></div>
+    <div class="detail-row"><span class="detail-key">Business</span><span class="detail-val">${u.business_name||'—'}</span></div>
+    <div class="detail-row"><span class="detail-key">Plan</span><span class="${ps.cls}">${ps.label}</span></div>
+    <div class="detail-row"><span class="detail-key">Days Left</span><span class="detail-val">${daysLeft(u)}</span></div>
+    <div class="detail-row"><span class="detail-key">Bot Active</span><span class="detail-val">${u.bot_active?'✅ Yes':'❌ No'}</span></div>
+    <div class="detail-row"><span class="detail-key">IG Connected</span><span class="detail-val">${u.ig_connected?'✅ '+( u.ig_page_name||'Yes'):'❌ No'}</span></div>
+    <div class="detail-row"><span class="detail-key">Total Leads</span><span class="detail-val">${u._leadCount||0}</span></div>
+    <div class="detail-row"><span class="detail-key">Joined</span><span class="detail-val">${fmtDate(u.created_at)}</span></div>
+    <div class="detail-row"><span class="detail-key">Website</span><span class="detail-val">${u.website_link||'—'}</span></div>
+  `;
+  document.getElementById('user-modal').classList.add('show');
+  document.getElementById('modal-ban-btn').onclick     = () => suspendUser(uid, u.name);
+  document.getElementById('modal-activate-btn').onclick = () => { grantPro(uid, u.name||''); closeModal(); };
+};
+window.closeModal = () => document.getElementById('user-modal').classList.remove('show');
+
+window.suspendUser = async function(uid, name) {
+  if (!confirm(`Suspend ${name}? Bot will be disabled.`)) return;
+  try {
+    await updateDoc(doc(db, 'users', uid), { bot_active: false, suspended: true, updated_at: serverTimestamp() });
+    toast('User suspended', 'error');
+    closeModal();
+    await loadAll();
+  } catch(err) { toast('Failed: ' + err.message, 'error'); }
+};
+
+// ── CSV Exports ───────────────────────────────────────────────────────────────
+function toCSV(rows, headers) {
+  const csv = [headers, ...rows].map(r => r.map(v => `"${String(v||'').replace(/"/g,'""')}"`).join(',')).join('\n');
+  const a = Object.assign(document.createElement('a'), { href: URL.createObjectURL(new Blob([csv],{type:'text/csv'})), download:`export_${Date.now()}.csv` });
+  a.click();
+}
+document.getElementById('btn-export-users').addEventListener('click', () => {
+  toCSV(allUsers.map(u=>[u.name||'',u.email||'',u.business_name||'',planStatus(u).label,u._leadCount||0,u.bot_active?'Yes':'No',fmtDate(u.created_at)]),
+    ['Name','Email','Business','Plan','Leads','Bot','Joined']);
+  toast('Users CSV downloaded','success');
+});
+document.getElementById('btn-export-leads').addEventListener('click', () => {
+  toCSV(allLeads.map(l=>[l.name||'',l.ownerName||'',l.business_type||'',l.product||'',l.budget||'',l.status||'',fmtDate(l.created_at)]),
+    ['Lead Name','Owner','Business','Product','Budget','Status','Date']);
+  toast('Leads CSV downloaded','success');
+});
+document.getElementById('btn-export-payments').addEventListener('click', () => {
+  toCSV(payments.map(p=>[p.userName||'',p.userEmail||'',p.amount||499,'Paid',fmtDate(p.created_at)]),
+    ['User','Email','Amount','Status','Date']);
+  toast('Payments CSV downloaded','success');
+});
+
+// ── Settings ──────────────────────────────────────────────────────────────────
+document.getElementById('btn-save-cfg').addEventListener('click', () => toast('Config saved (connect to backend /api/admin/config)','success'));
+document.getElementById('btn-make-admin').addEventListener('click', async () => {
+  const uid = document.getElementById('admin-uid').value.trim();
+  if (!uid) { toast('UID enter karo','error'); return; }
+  try {
+    await updateDoc(doc(db, 'users', uid), { is_admin: true, updated_at: serverTimestamp() });
+    toast('✅ Admin access granted!', 'success');
+  } catch(err) { toast('Failed: ' + err.message, 'error'); }
+});
+
+// ── Toast ─────────────────────────────────────────────────────────────────────
+function toast(msg, type='info', ms=3000) {
+  let a=document.getElementById('toast-area');
+  const el=document.createElement('div');
+  el.className=`toast ${type}`;el.textContent=msg;a.appendChild(el);
+  setTimeout(()=>{el.style.opacity='0';el.style.transition='opacity .3s';setTimeout(()=>el.remove(),300);},ms);
+}
+</script>
+</body>
+</html>
